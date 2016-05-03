@@ -1,4 +1,5 @@
-3Scale Application Approver
+3Scale Application Approver [![Build Status](https://travis-ci.org/cablespaghetti/3scale-application-approver.svg?branch=master)](https://travis-ci.org/cablespaghetti/3scale-application-approver)
+
 ============
 
 A simple app that uses the 3Scale API to Accept applications that are Pending but their account has credit card information stored.
