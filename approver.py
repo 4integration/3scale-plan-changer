@@ -90,7 +90,12 @@ def check_application_status(application_xml):
     :rtype: list[str] or None
     """
 
-    root = etree.fromstring(application_xml.encode('utf-8'))
+    try:
+        root = etree.fromstring(application_xml.encode('utf-8'))
+    except etree.XMLSyntaxError:
+        print("Error: XML Syntax Error in 3Scale applications response")
+        return None
+
     application_objects = root.findall("application")
     application_list = []
     for application_object in application_objects:

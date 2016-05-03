@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<applications>
+  <application>
+    <id>12345</id>
+    <created_at>2016-04-29T15:17:06+01:00</created_at>
+    <updated_at>2016-04-29T15:53:20+01:00</updated_at>
+    <state>pending</state>
+    <user_account_id>123456</user_account_id>
+    <end_user_required>false</end_user_required>
+    <service_id>1234567</service_id>
+    <user_key>super-awesome-user-key</user_key>
+    <provider_verification_key>super-awesome-verification-thing</provider_verification_key>
+    <plan custom="false" default="true">
+      <id>12345678</id>
+      <name>Plan 1</name>
+      <type>application_plan</type>
+      <state>published</state>
+      <service_id>123456789</service_id>
+      <end_user_required>false</end_user_required>
+      <setup_fee>0.0</setup_fee>
+      <cost_per_month>0.0</cost_per_month>
+      <trial_period_days>0</trial_period_days>
+      <cancellation_period>0</cancellation_period>
+    </plan>
+    <name>Private's App</name>
+    <description>Description of your default application</description>
+    <extra_fields></extra_fields>
+  </application>
+      <application>
+    <id>12346</id>
+    <created_at>2016-04-29T15:17:06+01:00</created_at>
+    <updated_at>2016-04-29T15:53:20+01:00</updated_at>
+    <state>live</state>
+    <user_account_id>123457</user_account_id>
+    <end_user_required>false</end_user_required>
+    <service_id>1234568</service_id>
+    <user_key>super-awesome-user-key</user_key>
+    <provider_verification_key>super-awesome-verification-thing</provider_verification_key>
+    <plan custom="false" default="true">
+      <id>12345679</id>
+      <name>Plan 1</name>
+      <type>application_plan</type>
+      <state>published</state>
+      <service_id>1234567810</service_id>
+      <end_user_required>false</end_user_required>
+      <setup_fee>0.0</setup_fee>
+      <cost_per_month>0.0</cost_per_month>
+      <trial_period_days>0</trial_period_days>
+      <cancellation_period>0</cancellation_period>
+    </plan>
+    <name>Private's App 2</name>
+    <description>Description of your default application</description>
+    <extra_fields></extra_fields>
+  </application>
+</applications>
