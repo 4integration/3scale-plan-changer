@@ -14,8 +14,8 @@ import argparse
 
 
 def get_account_xml(provider_key, api_endpoint):
-    """Downloads the list of customer accounts from 3Scale for our provider key and api endpoint and returns the XML
-    as a string. May return None if we get an error code from 3Scale.
+    """Downloads the list of approved customer accounts from 3Scale for our provider key and api endpoint and returns
+    the XML as a string. May return None if we get an error code from 3Scale.
 
     :param str provider_key: The 3Scale Provider Key
     :param str api_endpoint: The 3Scale API Endpoint
@@ -39,10 +39,14 @@ def get_accounts_with_card(account_xml):
     :param str account_xml: The 3Scale Response XML with a list of customer accounts.
 
     :return: List of 3Scale account ids.
-    :rtype: list[str] or None
+    :rtype: list[str]
     """
+    try:
+        root = etree.fromstring(account_xml.encode('utf-8'))
+    except etree.XMLSyntaxError:
+        print("Error: XML Syntax Error in 3Scale accounts response")
+        return None
 
-    root = etree.fromstring(account_xml.encode('utf-8'))
     account_objects = root.findall("account")
     account_list = []
 
