@@ -173,6 +173,7 @@ if __name__ == '__main__':
 
                 if applications:
                     for application in applications:
-                        change_application_plan(account, application, args.paid_plan, args.provider_key, args.api_endpoint)
+                        change_application_plan(account, application, args.paid_plan, args.provider_key,
+                                                args.api_endpoint)
     except (requests.RequestException, etree.XMLSyntaxError):
         exit(1)
