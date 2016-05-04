@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-    3Scale Application Approver
-    ~~~~~~~~~~~~~~
-    Approves pending applications for 3scale accounts that have credit card information.
+    3Scale Plan Changer
+    ~~~~~~~~~~~~~~~~~~~
+    A simple app that uses the 3Scale API to change application plans when the associated account has credit card
+    information stored.
 
     :copyright: (c) 2016 Snowflake Software Limited.
     :license: MIT, see LICENSE for more details.
@@ -26,6 +27,7 @@ def get_account_xml(provider_key, api_endpoint):
 
     r = requests.get('https://' + api_endpoint + '/admin/api/accounts.xml?provider_key=' + provider_key +
                      '&state=approved')
+
     if r.status_code != 200:
         print("Error: Code " + str(r.status_code) + " while getting account xml from 3scale")
         return None
@@ -81,12 +83,13 @@ def get_application_xml(account_id, provider_key, api_endpoint):
     return r.text
 
 
-def get_pending_applications(application_xml):
-    """Processes the applications xml and returns the id for any that are pending.
+def get_free_plan_applications(application_xml, free_plan):
+    """Processes the applications xml and returns the id for any that are in our free plan.
 
-    :param str application_xml: The 3Scale Response XML with a list of applications for a account.
+    :param str application_xml: The 3Scale Response XML with a list of applications for an account.
+    :param str free_plan: The 3Scale plan that we're changing from.
 
-    :return: List of applications that are Pending
+    :return: List of applications that are in our free plan
     :rtype: list[str] or None
     """
 
@@ -99,11 +102,11 @@ def get_pending_applications(application_xml):
     application_objects = root.findall("application")
     application_list = []
     for application_object in application_objects:
-        state = application_object.find("state").text
-        if state == "pending":
+        plan = application_object.find("plan").find("id").text
+        if plan == free_plan:
             application_id = application_object.find("id").text
             application_list.append(application_id)
-            print("Found pending application " + application_id)
+            print("Found application in free plan " + application_id)
 
     if not application_list:
         return None
@@ -111,11 +114,12 @@ def get_pending_applications(application_xml):
         return application_list
 
 
-def enable_application(account_id, application_id, provider_key, api_endpoint):
-    """Sends a request to 3scale to accept an application.
+def change_application_plan(account_id, application_id, plan_id, provider_key, api_endpoint):
+    """Sends a request to 3scale to change an application's plan.
 
     :param str account_id: The 3Scale Customer Account ID.
     :param str application_id: The 3Scale Application ID.
+    :param str plan_id: The 3Scale Plan ID to change to.
     :param str provider_key: The 3Scale Provider Key
     :param str api_endpoint: The 3Scale API Endpoint
 
@@ -123,15 +127,14 @@ def enable_application(account_id, application_id, provider_key, api_endpoint):
     :rtype: NoneType
     """
 
-    print("Accepting application " + application_id + " for account " + account_id)
+    print("Changing application plan " + application_id + " for account " + account_id + " to plan " + plan_id)
     r = requests.put('https://' + api_endpoint + '/admin/api/accounts/' + account_id + '/applications/' +
-                     application_id + '/accept.xml', data={'provider_key': provider_key})
+                     application_id + '/change_plan.xml', data={'provider_key': provider_key, 'plan_id': plan_id})
 
     if r.status_code == 200:
-        print("Success accepting application for " + application_id + " for account " + account_id)
+        print("Success changing application plan for " + application_id)
     else:
-        print("Error: Code " + str(r.status_code) + " while accepting application for " + application_id +
-              " for account " + account_id)
+        print("Error: Code " + str(r.status_code) + " while changing application plan for " + application_id)
 
 
 if __name__ == '__main__':
@@ -139,6 +142,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--provider_key', required=True, help='A 3Scale Provider Key')
     parser.add_argument('--api_endpoint', required=True, help='A 3Scale API Endpoint e.g. myapp.3scale.net')
+    parser.add_argument('--free_plan', required=True, help='The 3Scale Plan ID to change from e.g. 12345678')
+    parser.add_argument('--paid_plan', required=True, help='The 3Scale Plan ID to change to e.g. 12345678')
+
     args = parser.parse_args()
 
     xml = get_account_xml(args.provider_key, args.api_endpoint)
@@ -149,10 +155,9 @@ if __name__ == '__main__':
         exit(0)
     else:
         for account in accounts:
-
             xml = get_application_xml(account, args.provider_key, args.api_endpoint)
-            applications = get_pending_applications(xml)
+            applications = get_free_plan_applications(xml, args.free_plan)
 
             if applications:
                 for application in applications:
-                    enable_application(account, application, args.provider_key, args.api_endpoint)
+                    change_application_plan(account, application, args.paid_plan, args.provider_key, args.api_endpoint)
