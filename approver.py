@@ -141,7 +141,7 @@ if __name__ == '__main__':
     parser.add_argument('--api_endpoint', required=True, help='A 3Scale API Endpoint e.g. myapp.3scale.net')
     args = parser.parse_args()
 
-    xml = get_account_xml(args.threescale_provider_key, args.threescale_api_endpoint)
+    xml = get_account_xml(args.provider_key, args.api_endpoint)
     accounts = get_accounts_with_card(xml)
 
     if not accounts:
@@ -150,11 +150,9 @@ if __name__ == '__main__':
     else:
         for account in accounts:
 
-            xml = get_application_xml(account, args.threescale_provider_key, args.threescale_api_endpoint)
+            xml = get_application_xml(account, args.provider_key, args.api_endpoint)
             applications = get_pending_applications(xml)
 
-            if not applications:
-                continue
-
-            for application in applications:
-                enable_application(account, application, args.threescale_provider_key, args.threescale_api_endpoint)
+            if applications:
+                for application in applications:
+                    enable_application(account, application, args.provider_key, args.api_endpoint)

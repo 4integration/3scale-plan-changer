@@ -3,12 +3,12 @@ import approver
 import unittest
 
 
-class TestCheckApplicationStatus(unittest.TestCase):
-    def test_bad_xml(self, *args):
+class TestGetPendingApplications(unittest.TestCase):
+    def test_bad_xml(self):
         result = approver.get_pending_applications("<spam>")
         self.assertEqual(result, None)
 
-    def test_good_xml(self, *args):
+    def test_good_xml(self):
         file = open('test/check_application_status_good.xml', 'r')
         file_xml = file.read()
         result = approver.get_pending_applications(file_xml)
