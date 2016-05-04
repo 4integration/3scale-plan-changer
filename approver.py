@@ -27,7 +27,7 @@ def get_account_xml(provider_key, api_endpoint):
     r = requests.get('https://' + api_endpoint + '/admin/api/accounts.xml?provider_key=' + provider_key +
                      '&state=approved')
     if r.status_code != 200:
-        print("Error: Code " + r.status_code + " while getting account xml from 3scale")
+        print("Error: Code " + str(r.status_code) + " while getting account xml from 3scale")
         return None
 
     return r.text
@@ -75,7 +75,7 @@ def get_application_xml(account_id, provider_key, api_endpoint):
                      '/applications.xml?provider_key=' + provider_key)
 
     if r.status_code != 200:
-        print("Error: Code " + r.status_code + " while getting application xml for account " + account_id)
+        print("Error: Code " + str(r.status_code) + " while getting application xml for account " + account_id)
         return None
 
     return r.text
@@ -130,7 +130,7 @@ def enable_application(account_id, application_id, provider_key, api_endpoint):
     if r.status_code == 200:
         print("Accepting application worked for " + application_id + " for account " + account_id)
     else:
-        print("Error: Code " + r.status_code + " while accepting application for " + application_id + " for account " + account_id)
+        print("Error: Code " + str(r.status_code) + " while accepting application for " + application_id + " for account " + account_id)
 
 
 if __name__ == '__main__':
