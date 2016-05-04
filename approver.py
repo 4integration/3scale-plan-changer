@@ -128,7 +128,7 @@ def enable_application(account_id, application_id, provider_key, api_endpoint):
                      application_id + '/accept.xml', data={'provider_key': provider_key})
 
     if r.status_code == 200:
-        print("Accepting application worked for " + application_id + " for account " + account_id)
+        print("Success accepting application for " + application_id + " for account " + account_id)
     else:
         print("Error: Code " + str(r.status_code) + " while accepting application for " + application_id + " for account " + account_id)
 
