@@ -24,13 +24,16 @@ def get_account_xml(provider_key, api_endpoint):
     :return: Customer accounts XML response
     :rtype str or None
     """
-
-    r = requests.get('https://' + api_endpoint + '/admin/api/accounts.xml?provider_key=' + provider_key +
-                     '&state=approved')
+    try:
+        r = requests.get('https://' + api_endpoint + '/admin/api/accounts.xml?provider_key=' + provider_key +
+                         '&state=approved', timeout=5)
+    except requests.RequestException:
+        print("Error: Exception raised while getting account xml from 3scale")
+        raise
 
     if r.status_code != 200:
         print("Error: Code " + str(r.status_code) + " while getting account xml from 3scale")
-        return None
+        raise requests.HTTPError
 
     return r.text
 
@@ -47,7 +50,7 @@ def get_accounts_with_card(account_xml):
         root = etree.fromstring(account_xml.encode('utf-8'))
     except etree.XMLSyntaxError:
         print("Error: XML Syntax Error in 3Scale accounts response")
-        return None
+        raise
 
     account_objects = root.findall("account")
     account_list = []
@@ -72,13 +75,16 @@ def get_application_xml(account_id, provider_key, api_endpoint):
     :return: Applications XML response
     :rtype str or None
     """
-
-    r = requests.get('https://' + api_endpoint + '/admin/api/accounts/' + account_id +
-                     '/applications.xml?provider_key=' + provider_key)
+    try:
+        r = requests.get('https://' + api_endpoint + '/admin/api/accounts/' + account_id +
+                         '/applications.xml?provider_key=' + provider_key, timeout=5)
+    except requests.RequestException:
+        print("Error: Exception raised while getting application xml for account " + account_id)
+        raise
 
     if r.status_code != 200:
         print("Error: Code " + str(r.status_code) + " while getting application xml for account " + account_id)
-        return None
+        raise requests.HTTPError
 
     return r.text
 
@@ -97,7 +103,7 @@ def get_free_plan_applications(application_xml, free_plan):
         root = etree.fromstring(application_xml.encode('utf-8'))
     except etree.XMLSyntaxError:
         print("Error: XML Syntax Error in 3Scale applications response")
-        return None
+        raise
 
     application_objects = root.findall("application")
     application_list = []
@@ -128,13 +134,20 @@ def change_application_plan(account_id, application_id, plan_id, provider_key, a
     """
 
     print("Info: Changing application " + application_id + " for account " + account_id + " to plan " + plan_id)
-    r = requests.put('https://' + api_endpoint + '/admin/api/accounts/' + account_id + '/applications/' +
-                     application_id + '/change_plan.xml', data={'provider_key': provider_key, 'plan_id': plan_id})
+
+    try:
+        r = requests.put('https://' + api_endpoint + '/admin/api/accounts/' + account_id + '/applications/' +
+                         application_id + '/change_plan.xml', data={'provider_key': provider_key, 'plan_id': plan_id},
+                         timeout=5)
+    except requests.RequestException:
+        print("Error: Exception raises while changing application plan for " + application_id)
+        raise
 
     if r.status_code == 200:
         print("Info: Success changing application plan for " + application_id)
     else:
         print("Error: Code " + str(r.status_code) + " while changing application plan for " + application_id)
+        raise requests.HTTPError
 
 
 if __name__ == '__main__':
@@ -147,17 +160,19 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    xml = get_account_xml(args.provider_key, args.api_endpoint)
-    accounts = get_accounts_with_card(xml)
+    try:
+        xml = get_account_xml(args.provider_key, args.api_endpoint)
+        accounts = get_accounts_with_card(xml)
 
-    if not accounts:
-        print("Warning: No accounts found with card details stored")
-        exit(0)
-    else:
-        for account in accounts:
-            xml = get_application_xml(account, args.provider_key, args.api_endpoint)
-            applications = get_free_plan_applications(xml, args.free_plan)
+        if not accounts:
+            print("Info: No accounts found with card details stored")
+        else:
+            for account in accounts:
+                xml = get_application_xml(account, args.provider_key, args.api_endpoint)
+                applications = get_free_plan_applications(xml, args.free_plan)
 
-            if applications:
-                for application in applications:
-                    change_application_plan(account, application, args.paid_plan, args.provider_key, args.api_endpoint)
+                if applications:
+                    for application in applications:
+                        change_application_plan(account, application, args.paid_plan, args.provider_key, args.api_endpoint)
+    except (requests.RequestException, etree.XMLSyntaxError):
+        exit(1)

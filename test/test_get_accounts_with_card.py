@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 import changer
 import unittest
+from lxml import etree
 
 
 class TestGetAccountsWithCard(unittest.TestCase):
     def test_bad_xml(self):
-        result = changer.get_accounts_with_card("<spam>")
-        self.assertEqual(result, None)
+        with self.assertRaises(etree.XMLSyntaxError):
+            changer.get_accounts_with_card("<spam>")
 
     def test_good_xml(self):
         file = open('test/get_account_xml_good.xml', 'r')
