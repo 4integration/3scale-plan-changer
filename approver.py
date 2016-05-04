@@ -81,7 +81,7 @@ def get_application_xml(account_id, provider_key, api_endpoint):
     return r.text
 
 
-def check_application_status(application_xml):
+def get_pending_applications(application_xml):
     """Processes the applications xml and returns the id for any that are pending.
 
     :param str application_xml: The 3Scale Response XML with a list of applications for a account.
@@ -135,27 +135,26 @@ def enable_application(account_id, application_id, provider_key, api_endpoint):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--provider_key', help='A 3Scale Provider Key')
-    parser.add_argument('--api_endpoint', help='A 3Scale API Endpoint e.g. myapp.3scale.net')
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--provider_key', required=True, help='A 3Scale Provider Key')
+    parser.add_argument('--api_endpoint', required=True, help='A 3Scale API Endpoint e.g. myapp.3scale.net')
     args = parser.parse_args()
 
-    threescale_provider_key = args.provider_key
-    threescale_api_endpoint = args.api_endpoint
+    xml = get_account_xml(args.threescale_provider_key, args.threescale_api_endpoint)
+    accounts = get_accounts_with_card(xml)
 
-    if not threescale_api_endpoint or not threescale_api_endpoint:
-        print("Error: Missing argument. Please see --help.")
-        exit(1)
-
-    accounts = get_accounts_with_card(get_account_xml(threescale_provider_key, threescale_api_endpoint))
-    if not isinstance(accounts, list):
+    if not accounts:
         print("Warning: No accounts found with card details stored")
         exit(0)
     else:
         for account in accounts:
-            applications = check_application_status(get_application_xml(account, threescale_provider_key,
-                                                                        threescale_api_endpoint))
-            if applications:
-                for application in applications:
-                    enable_application(account, application, threescale_provider_key, threescale_api_endpoint)
+
+            xml = get_application_xml(account, args.threescale_provider_key, args.threescale_api_endpoint)
+            applications = get_pending_applications(xml)
+
+            if not applications:
+                continue
+
+            for application in applications:
+                enable_application(account, application, args.threescale_provider_key, args.threescale_api_endpoint)
