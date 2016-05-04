@@ -106,7 +106,7 @@ def get_free_plan_applications(application_xml, free_plan):
         if plan == free_plan:
             application_id = application_object.find("id").text
             application_list.append(application_id)
-            print("Found application in free plan " + application_id)
+            print("Info: Found application in free plan " + application_id)
 
     if not application_list:
         return None
@@ -127,12 +127,12 @@ def change_application_plan(account_id, application_id, plan_id, provider_key, a
     :rtype: NoneType
     """
 
-    print("Changing application plan " + application_id + " for account " + account_id + " to plan " + plan_id)
+    print("Info: Changing application " + application_id + " for account " + account_id + " to plan " + plan_id)
     r = requests.put('https://' + api_endpoint + '/admin/api/accounts/' + account_id + '/applications/' +
                      application_id + '/change_plan.xml', data={'provider_key': provider_key, 'plan_id': plan_id})
 
     if r.status_code == 200:
-        print("Success changing application plan for " + application_id)
+        print("Info: Success changing application plan for " + application_id)
     else:
         print("Error: Code " + str(r.status_code) + " while changing application plan for " + application_id)
 
