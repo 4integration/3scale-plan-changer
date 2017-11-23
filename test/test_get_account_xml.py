@@ -24,5 +24,6 @@ class TestGetAccountXml(unittest.TestCase):
             result = changer.get_account_xml('fake-key', 'myapp.3scale.net')
             self.assertEqual(result, 'I\'m some XML honest')
 
+
 if __name__ == '__main__':
     unittest.main()

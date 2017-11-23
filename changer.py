@@ -12,6 +12,7 @@
 import requests
 from lxml import etree
 import argparse
+from datetime import datetime
 
 
 def get_account_xml(provider_key, api_endpoint):
@@ -38,13 +39,14 @@ def get_account_xml(provider_key, api_endpoint):
     return r.text
 
 
-def get_accounts_with_card(account_xml):
+def get_accounts(account_xml, card=True):
     """Processes the 3Scale list of customer accounts and returns the id for any that have credit cards stored.
 
     :param str account_xml: The 3Scale Response XML with a list of customer accounts.
+    :param bool card: Whether to return accounts with or without a card
 
     :return: List of 3Scale account ids.
-    :rtype: list[str]
+    :rtype: list[tuple]
     """
     try:
         root = etree.fromstring(account_xml.encode('utf-8'))
@@ -56,10 +58,23 @@ def get_accounts_with_card(account_xml):
     account_list = []
 
     for account_object in account_objects:
-        credit_card_status = account_object.find("credit_card_stored")
-        if credit_card_status.text == "true":
-            account_id = account_object.find("id")
-            account_list.append(account_id.text)
+        credit_card_status = account_object.find("credit_card_stored").text
+
+        # If the card param is True then populate the list with accounts with cards
+        # If not then populate the list with accounts with no cards
+        if card:
+            desired_card_status = "true"
+        else:
+            desired_card_status = "false"
+
+        if credit_card_status == desired_card_status:
+                account_id = account_object.find("id").text
+                created_text = account_object.find("created_at").text
+
+                # 3Scale has a colon in their timezone, Python datetime can't deal with that. So this is a bit of a hack
+                # to remove the colon character before generating a datetime.
+                created_date = datetime.strptime(created_text[:22]+created_text[23:], '%Y-%m-%dT%H:%M:%S%z')
+                account_list.append(tuple((account_id, created_date)))
 
     return account_list
 
@@ -162,18 +177,18 @@ if __name__ == '__main__':
 
     try:
         xml = get_account_xml(args.provider_key, args.api_endpoint)
-        accounts = get_accounts_with_card(xml)
+        accounts = get_accounts(xml, card=True)
 
         if not accounts:
             print("Info: No accounts found with card details stored")
         else:
             for account in accounts:
-                xml = get_application_xml(account, args.provider_key, args.api_endpoint)
+                xml = get_application_xml(account[0], args.provider_key, args.api_endpoint)
                 applications = get_free_plan_applications(xml, args.free_plan)
 
                 if applications:
                     for application in applications:
-                        change_application_plan(account, application, args.paid_plan, args.provider_key,
+                        change_application_plan(account[0], application, args.paid_plan, args.provider_key,
                                                 args.api_endpoint)
     except (requests.RequestException, etree.XMLSyntaxError) as e:
         print(str(e))
