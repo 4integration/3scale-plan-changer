@@ -12,7 +12,7 @@
 import requests
 from lxml import etree
 import argparse
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 def get_account_list(provider_key, api_endpoint):
@@ -144,8 +144,9 @@ def get_free_plan_applications(application_xml, free_plan):
         plan = application_object.find("plan").find("id").text
         if plan == free_plan:
             application_id = application_object.find("id").text
+            application_name = application_object.find("name").text
             application_list.append(application_id)
-            print("Info: Found application in free plan " + application_id)
+            print("Info: Found application in free plan {} with id {}".format(application_name, application_id))
 
     if not application_list:
         return None
@@ -255,13 +256,17 @@ if __name__ == '__main__':
 
     # Get applications with card details and put them on the paid plan
     try:
-        account_list = get_account_list(args.provider_key, args.api_endpoint)
-        accounts = get_accounts(account_list, card=True)
+        accounts_list = get_account_list(args.provider_key, args.api_endpoint)
+        accounts_with_card = get_accounts(accounts_list, card=True)
+    except (requests.RequestException, etree.XMLSyntaxError) as e:
+        print(str(e))
+        exit(1)
 
-        if not accounts:
+    try:
+        if not accounts_with_card:
             print("Info: No accounts found with card details stored")
         else:
-            for account in accounts:
+            for account in accounts_with_card:
                 xml = get_application_xml(account[0], args.provider_key, args.api_endpoint)
                 applications = get_free_plan_applications(xml, args.free_plan)
 
@@ -269,7 +274,7 @@ if __name__ == '__main__':
                     for application in applications:
                         change_application_plan(account[0], application, args.paid_plan, args.provider_key,
                                                 args.api_endpoint)
-    except (requests.RequestException, etree.XMLSyntaxError) as e:
+    except requests.RequestException as e:
         print(str(e))
         exit(1)
 
@@ -278,17 +283,20 @@ if __name__ == '__main__':
         exit(0)
 
     try:
-        account_list = get_account_list(args.provider_key, args.api_endpoint)
-        accounts = get_accounts(account_list, card=False)
+        accounts_without_card = get_accounts(accounts_list, card=False)
+    except etree.XMLSyntaxError as e:
+        print(str(e))
+        exit(1)
 
-        if not accounts:
+    try:
+        if not accounts_without_card:
             print("Info: No accounts found without card details stored")
         else:
-            for account in accounts:
-                now = datetime.now()
+            for account in accounts_without_card:
+                now = datetime.now(timezone.utc)
                 account_created = account[1]
                 age = now - account_created
-                age_in_days = account_created.total_seconds()/86400
+                age_in_days = age.total_seconds()/86400
 
                 if age_in_days > int(args.trial_length):
                     xml = get_application_xml(account[0], args.provider_key, args.api_endpoint)
@@ -298,6 +306,6 @@ if __name__ == '__main__':
                         for application in applications:
                             suspend_application(account[0], application, args.provider_key, args.api_endpoint)
 
-    except (requests.RequestException, etree.XMLSyntaxError) as e:
+    except requests.RequestException as e:
         print(str(e))
         exit(1)
