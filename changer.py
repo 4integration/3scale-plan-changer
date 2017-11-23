@@ -148,6 +148,9 @@ def change_application_plan(account_id, application_id, plan_id, provider_key, a
     :rtype: NoneType
     """
 
+    # Make sure the application isn't suspended
+    resume_application(account_id, application_id, provider_key, api_endpoint)
+
     print("Info: Changing application " + application_id + " for account " + account_id + " to plan " + plan_id)
 
     try:
@@ -155,7 +158,7 @@ def change_application_plan(account_id, application_id, plan_id, provider_key, a
                          application_id + '/change_plan.xml', data={'provider_key': provider_key, 'plan_id': plan_id},
                          timeout=30)
     except requests.RequestException as e:
-        print("Error: Exception raises while changing application plan for " + application_id + " " + str(e))
+        print("Error: Exception raised while changing application plan for " + application_id + " " + str(e))
         raise
 
     if r.status_code == 200:
@@ -183,13 +186,41 @@ def suspend_application(account_id, application_id, provider_key, api_endpoint):
         r = requests.put('https://' + api_endpoint + '/admin/api/accounts/' + account_id + '/applications/' +
                          application_id + '/suspend.xml', data={'provider_key': provider_key}, timeout=30)
     except requests.RequestException as e:
-        print("Error: Exception raises while suspending application " + application_id + " " + str(e))
+        print("Error: Exception raised while suspending application " + application_id + " " + str(e))
         raise
 
     if r.status_code == 200:
         print("Info: Success suspending application " + application_id)
     else:
         print("Error: Code " + str(r.status_code) + " while suspending application " + application_id)
+        raise requests.HTTPError
+
+
+def resume_application(account_id, application_id, provider_key, api_endpoint):
+    """Sends a request to 3scale to resume an application.
+
+    :param str account_id: The 3Scale Customer Account ID.
+    :param str application_id: The 3Scale Application ID.
+    :param str provider_key: The 3Scale Provider Key
+    :param str api_endpoint: The 3Scale API Endpoint
+
+    :return: None
+    :rtype: NoneType
+    """
+
+    print("Info: Resuming application " + application_id + " for account " + account_id)
+
+    try:
+        r = requests.put('https://' + api_endpoint + '/admin/api/accounts/' + account_id + '/applications/' +
+                         application_id + '/resume.xml', data={'provider_key': provider_key}, timeout=30)
+    except requests.RequestException as e:
+        print("Error: Exception raised while resuming application " + application_id + " " + str(e))
+        raise
+
+    if r.status_code == 200:
+        print("Info: Success resuming application " + application_id)
+    else:
+        print("Error: Code " + str(r.status_code) + " while resuming application " + application_id)
         raise requests.HTTPError
 
 
