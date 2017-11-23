@@ -26,9 +26,9 @@ def get_account_xml(provider_key, api_endpoint):
     """
     try:
         r = requests.get('https://' + api_endpoint + '/admin/api/accounts.xml?provider_key=' + provider_key +
-                         '&state=approved', timeout=5)
-    except requests.RequestException:
-        print("Error: Exception raised while getting account xml from 3scale")
+                         '&state=approved', timeout=30)
+    except requests.RequestException as e:
+        print("Error: Exception raised while getting account xml from 3scale " + str(e))
         raise
 
     if r.status_code != 200:
@@ -48,8 +48,8 @@ def get_accounts_with_card(account_xml):
     """
     try:
         root = etree.fromstring(account_xml.encode('utf-8'))
-    except etree.XMLSyntaxError:
-        print("Error: XML Syntax Error in 3Scale accounts response")
+    except etree.XMLSyntaxError as e:
+        print("Error: XML Syntax Error in 3Scale accounts response " + str(e))
         raise
 
     account_objects = root.findall("account")
@@ -77,9 +77,9 @@ def get_application_xml(account_id, provider_key, api_endpoint):
     """
     try:
         r = requests.get('https://' + api_endpoint + '/admin/api/accounts/' + account_id +
-                         '/applications.xml?provider_key=' + provider_key, timeout=5)
-    except requests.RequestException:
-        print("Error: Exception raised while getting application xml for account " + account_id)
+                         '/applications.xml?provider_key=' + provider_key, timeout=30)
+    except requests.RequestException as e:
+        print("Error: Exception raised while getting application xml for account " + account_id + " " + str(e))
         raise
 
     if r.status_code != 200:
@@ -101,8 +101,8 @@ def get_free_plan_applications(application_xml, free_plan):
 
     try:
         root = etree.fromstring(application_xml.encode('utf-8'))
-    except etree.XMLSyntaxError:
-        print("Error: XML Syntax Error in 3Scale applications response")
+    except etree.XMLSyntaxError as e:
+        print("Error: XML Syntax Error in 3Scale applications response " + str(e))
         raise
 
     application_objects = root.findall("application")
@@ -138,9 +138,9 @@ def change_application_plan(account_id, application_id, plan_id, provider_key, a
     try:
         r = requests.put('https://' + api_endpoint + '/admin/api/accounts/' + account_id + '/applications/' +
                          application_id + '/change_plan.xml', data={'provider_key': provider_key, 'plan_id': plan_id},
-                         timeout=5)
-    except requests.RequestException:
-        print("Error: Exception raises while changing application plan for " + application_id)
+                         timeout=30)
+    except requests.RequestException as e:
+        print("Error: Exception raises while changing application plan for " + application_id + " " + str(e))
         raise
 
     if r.status_code == 200:
@@ -175,5 +175,6 @@ if __name__ == '__main__':
                     for application in applications:
                         change_application_plan(account, application, args.paid_plan, args.provider_key,
                                                 args.api_endpoint)
-    except (requests.RequestException, etree.XMLSyntaxError):
+    except (requests.RequestException, etree.XMLSyntaxError) as e:
+        print(str(e))
         exit(1)
