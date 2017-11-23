@@ -15,68 +15,86 @@ import argparse
 from datetime import datetime
 
 
-def get_account_xml(provider_key, api_endpoint):
+def get_account_list(provider_key, api_endpoint):
     """Downloads the list of approved customer accounts from 3Scale for our provider key and api endpoint and returns
     the XML as a string. May return None if we get an error code from 3Scale.
 
     :param str provider_key: The 3Scale Provider Key
     :param str api_endpoint: The 3Scale API Endpoint
 
-    :return: Customer accounts XML response
+    :return: Customer account XML element list
     :rtype str or None
     """
-    try:
-        r = requests.get('https://' + api_endpoint + '/admin/api/accounts.xml?provider_key=' + provider_key +
-                         '&state=approved', timeout=30)
-    except requests.RequestException as e:
-        print("Error: Exception raised while getting account xml from 3scale " + str(e))
-        raise
 
-    if r.status_code != 200:
-        print("Error: Code " + str(r.status_code) + " while getting account xml from 3scale")
-        raise requests.HTTPError
+    page = 1
+    account_objects = []
+    while True:
+        try:
+            r = requests.get('https://' + api_endpoint + '/admin/api/accounts.xml?provider_key=' + provider_key +
+                             '&state=approved&page=' + str(page), timeout=30)
+        except requests.RequestException as e:
+            print("Error: Exception raised while getting account xml from 3scale " + str(e))
+            raise
 
-    return r.text
+        if r.status_code != 200:
+            print("Error: Code " + str(r.status_code) + " while getting account xml from 3scale")
+            raise requests.HTTPError
+
+        try:
+            root = etree.fromstring(r.text.encode('utf-8'))
+        except etree.XMLSyntaxError as e:
+            print("Error: XML Syntax Error in 3Scale accounts response " + str(e))
+            raise
+
+        account_objects = account_objects + root.findall("account")
+
+        if int(root.attrib['total_pages']) > page:
+            page += 1
+        else:
+            break
+
+    if len(account_objects) == 0:
+        raise etree.XMLSyntaxError("No Account Elements in 3Scale XML")
+    else:
+        print("Got {} accounts back from 3Scale".format(len(account_objects)))
+
+    return account_objects
 
 
-def get_accounts(account_xml, card=True):
+def get_accounts(account_object_list, card=True):
     """Processes the 3Scale list of customer accounts and returns the id for any that have credit cards stored.
 
-    :param str account_xml: The 3Scale Response XML with a list of customer accounts.
+    :param list[xml_element] account_object_list: A list of the 3Scale account XML elements.
     :param bool card: Whether to return accounts with or without a card
 
     :return: List of 3Scale account ids.
     :rtype: list[tuple]
     """
-    try:
-        root = etree.fromstring(account_xml.encode('utf-8'))
-    except etree.XMLSyntaxError as e:
-        print("Error: XML Syntax Error in 3Scale accounts response " + str(e))
-        raise
+    accounts_with_card = []
+    accounts_without_card = []
 
-    account_objects = root.findall("account")
-    account_list = []
-
-    for account_object in account_objects:
+    for account_object in account_object_list:
+        account_id = account_object.find("id").text
+        created_text = account_object.find("created_at").text
         credit_card_status = account_object.find("credit_card_stored").text
 
-        # If the card param is True then populate the list with accounts with cards
-        # If not then populate the list with accounts with no cards
-        if card:
-            desired_card_status = "true"
+        # 3Scale has a colon in their timezone, Python datetime can't deal with that. So this is a bit of a hack
+        # to remove the colon character before generating a datetime.
+        created_date = datetime.strptime(created_text[:22] + created_text[23:], '%Y-%m-%dT%H:%M:%S%z')
+
+        if credit_card_status == "true":
+            accounts_with_card.append(tuple((account_id, created_date)))
         else:
-            desired_card_status = "false"
+            accounts_without_card.append(tuple((account_id, created_date)))
 
-        if credit_card_status == desired_card_status:
-                account_id = account_object.find("id").text
-                created_text = account_object.find("created_at").text
+    print("{} accounts have a card and {} do not".format(len(accounts_with_card), len(accounts_without_card)))
 
-                # 3Scale has a colon in their timezone, Python datetime can't deal with that. So this is a bit of a hack
-                # to remove the colon character before generating a datetime.
-                created_date = datetime.strptime(created_text[:22]+created_text[23:], '%Y-%m-%dT%H:%M:%S%z')
-                account_list.append(tuple((account_id, created_date)))
-
-    return account_list
+    # If the card param is True then return the list with accounts with cards
+    # If not then return the list with accounts with no cards
+    if card:
+        return accounts_with_card
+    else:
+        return accounts_without_card
 
 
 def get_application_xml(account_id, provider_key, api_endpoint):
@@ -237,8 +255,8 @@ if __name__ == '__main__':
 
     # Get applications with card details and put them on the paid plan
     try:
-        xml = get_account_xml(args.provider_key, args.api_endpoint)
-        accounts = get_accounts(xml, card=True)
+        account_list = get_account_list(args.provider_key, args.api_endpoint)
+        accounts = get_accounts(account_list, card=True)
 
         if not accounts:
             print("Info: No accounts found with card details stored")
@@ -260,8 +278,8 @@ if __name__ == '__main__':
         exit(0)
 
     try:
-        xml = get_account_xml(args.provider_key, args.api_endpoint)
-        accounts = get_accounts(xml, card=False)
+        account_list = get_account_list(args.provider_key, args.api_endpoint)
+        accounts = get_accounts(account_list, card=False)
 
         if not accounts:
             print("Info: No accounts found without card details stored")
