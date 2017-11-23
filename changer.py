@@ -165,6 +165,34 @@ def change_application_plan(account_id, application_id, plan_id, provider_key, a
         raise requests.HTTPError
 
 
+def suspend_application(account_id, application_id, provider_key, api_endpoint):
+    """Sends a request to 3scale to suspend an application.
+
+    :param str account_id: The 3Scale Customer Account ID.
+    :param str application_id: The 3Scale Application ID.
+    :param str provider_key: The 3Scale Provider Key
+    :param str api_endpoint: The 3Scale API Endpoint
+
+    :return: None
+    :rtype: NoneType
+    """
+
+    print("Info: Suspending application " + application_id + " for account " + account_id)
+
+    try:
+        r = requests.put('https://' + api_endpoint + '/admin/api/accounts/' + account_id + '/applications/' +
+                         application_id + '/suspend.xml', data={'provider_key': provider_key}, timeout=30)
+    except requests.RequestException as e:
+        print("Error: Exception raises while suspending application " + application_id + " " + str(e))
+        raise
+
+    if r.status_code == 200:
+        print("Info: Success suspending application " + application_id)
+    else:
+        print("Error: Code " + str(r.status_code) + " while suspending application " + application_id)
+        raise requests.HTTPError
+
+
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
@@ -172,9 +200,11 @@ if __name__ == '__main__':
     parser.add_argument('--api_endpoint', required=True, help='A 3Scale API Endpoint e.g. myapp.3scale.net')
     parser.add_argument('--free_plan', required=True, help='The 3Scale Plan ID to change from e.g. 12345678')
     parser.add_argument('--paid_plan', required=True, help='The 3Scale Plan ID to change to e.g. 12345678')
+    parser.add_argument('--trial_length', required=False, help='How many days to give free accounts before disabling')
 
     args = parser.parse_args()
 
+    # Get applications with card details and put them on the paid plan
     try:
         xml = get_account_xml(args.provider_key, args.api_endpoint)
         accounts = get_accounts(xml, card=True)
@@ -190,6 +220,35 @@ if __name__ == '__main__':
                     for application in applications:
                         change_application_plan(account[0], application, args.paid_plan, args.provider_key,
                                                 args.api_endpoint)
+    except (requests.RequestException, etree.XMLSyntaxError) as e:
+        print(str(e))
+        exit(1)
+
+    # Optionally applications without card details and suspend them if the account is more than {trial_length}
+    if not args.trial_length:
+        exit(0)
+
+    try:
+        xml = get_account_xml(args.provider_key, args.api_endpoint)
+        accounts = get_accounts(xml, card=False)
+
+        if not accounts:
+            print("Info: No accounts found without card details stored")
+        else:
+            for account in accounts:
+                now = datetime.now()
+                account_created = account[1]
+                age = now - account_created
+                age_in_days = account_created.total_seconds()/86400
+
+                if age_in_days > int(args.trial_length):
+                    xml = get_application_xml(account[0], args.provider_key, args.api_endpoint)
+                    applications = get_free_plan_applications(xml, args.free_plan)
+
+                    if applications:
+                        for application in applications:
+                            suspend_application(account[0], application, args.provider_key, args.api_endpoint)
+
     except (requests.RequestException, etree.XMLSyntaxError) as e:
         print(str(e))
         exit(1)
