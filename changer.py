@@ -122,11 +122,12 @@ def get_application_xml(account_id, provider_key, api_endpoint):
     return r.text
 
 
-def get_free_plan_applications(application_xml, free_plan):
+def get_free_plan_applications(application_xml, free_plan, ignore_suspended=False):
     """Processes the applications xml and returns the id for any that are in our free plan.
 
     :param str application_xml: The 3Scale Response XML with a list of applications for an account.
     :param str free_plan: The 3Scale plan that we're changing from.
+    :param bool ignore_suspended: Whetheher to ignore suspended application (defaults to False)
 
     :return: List of applications that are in our free plan
     :rtype: list[str] or None
@@ -142,6 +143,10 @@ def get_free_plan_applications(application_xml, free_plan):
     application_list = []
     for application_object in application_objects:
         plan = application_object.find("plan").find("id").text
+        state = application_object.find("state").text
+        if ignore_suspended and state=='suspended':
+            continue
+
         if plan == free_plan:
             application_id = application_object.find("id").text
             application_name = application_object.find("name").text
@@ -300,7 +305,7 @@ if __name__ == '__main__':
 
                 if age_in_days > int(args.trial_length):
                     xml = get_application_xml(account[0], args.provider_key, args.api_endpoint)
-                    applications = get_free_plan_applications(xml, args.free_plan)
+                    applications = get_free_plan_applications(xml, args.free_plan, ignore_suspended=True)
 
                     if applications:
                         for application in applications:
